@@ -1,6 +1,6 @@
 'use strict';
 
-import {buildConstantByNpy} from '../common/utils.js';
+import {buildConstantByNpy, weightsOrigin} from '../common/utils.js';
 
 /* eslint max-len: ["error", {"code": 130}] */
 
@@ -12,7 +12,8 @@ export class FastStyleTransferNet {
     this.graph_ = null;
     this.constPow_ = null;
     this.constAdd_ = null;
-    this.weightsUrl_ = '../test-data/models/fast_style_transfer_nchw/weights/';
+    this.weightsUrl_ = weightsOrigin() +
+      '/test-data/models/fast_style_transfer_nchw/weights/';
     this.inputOptions = {
       inputDimensions: [1, 3, 540, 540],
       inputLayout: 'nchw',
@@ -22,8 +23,12 @@ export class FastStyleTransferNet {
 
   buildInstanceNormalization_(conv2D, variableMul, variableAdd) {
     if ('instanceNormalization' in this.builder_) {
-      return this.builder_.instanceNormalization(conv2D,
-          {scale: this.builder_.squeeze(variableMul), bias: this.builder_.squeeze(variableAdd)});
+      // Use reshape to implement squeeze(variableMul); and squeeze(variableAdd);
+      const mulShape = variableMul.shape().filter((dim) => dim !==1);
+      const addShape = variableAdd.shape().filter((dim) => dim !==1);
+      const mulSqueeze = this.builder_.reshape(variableMul, mulShape);
+      const addSqueeze = this.builder_.reshape(variableAdd, addShape);
+      return this.builder_.instanceNormalization(conv2D, {scale: mulSqueeze, bias: addSqueeze});
     } else {
       const sub = this.builder_.sub(conv2D, this.builder_.reduceMean(conv2D, {axes: [2, 3], keepDimensions: true}));
       const reduceMean = this.builder_.reduceMean(this.builder_.mul(sub, sub), {axes: [2, 3], keepDimensions: true});
@@ -91,15 +96,27 @@ export class FastStyleTransferNet {
     const padding1 = [0, 0, 1, 1];
     const padding4 = [0, 0, 4, 4];
     this.constAdd_ = this.builder_.constant(
-        {type: 'float32', dimensions: [1]}, new Float32Array([9.999999717180685e-10]));
+        {type: 'float32', dataType: 'float32', dimensions: [1]},
+        new Float32Array([9.999999717180685e-10]),
+    );
     this.constPow_ = this.builder_.constant(
-        {type: 'float32', dimensions: [1]}, new Float32Array([0.5]));
+        {type: 'float32', dataType: 'float32', dimensions: [1]},
+        new Float32Array([0.5]),
+    );
     const constMul0 = this.builder_.constant(
-        {type: 'float32', dimensions: [1]}, new Float32Array([150]));
+        {type: 'float32', dataType: 'float32', dimensions: [1]},
+        new Float32Array([150]),
+    );
     const constAdd0 = this.builder_.constant(
-        {type: 'float32', dimensions: [1]}, new Float32Array([127.5]));
+        {type: 'float32', dataType: 'float32', dimensions: [1]},
+        new Float32Array([127.5]),
+    );
     // Build up the network.
-    const input = this.builder_.input('input', {type: 'float32', dimensions: this.inputOptions.inputDimensions});
+    const input = this.builder_.input('input', {
+      type: 'float32',
+      dataType: 'float32',
+      dimensions: this.inputOptions.inputDimensions,
+    });
     const conv2D0 = this.builder_.conv2d(this.builder_.pad(input, padding4, padding4, {mode: 'reflection'}), weightConv0);
 
     const add0 = this.buildInstanceNormalization_(conv2D0, variableMul0, variableAdd0);
@@ -155,12 +172,12 @@ export class FastStyleTransferNet {
     const add16 = this.buildInstanceNormalization_(conv2D12, variableMul12, variableAdd12);
     const add17 = this.builder_.add(add14, add16);
     const convTranspose0 = this.builder_.convTranspose2d(add17, weightConvTranspose0,
-        {strides: [2, 2], outputSizes: [270, 270]});
+        {padding: [0, 1, 0, 1], strides: [2, 2], outputSizes: [270, 270]});
 
     const add18 = this.buildInstanceNormalization_(convTranspose0, variableMul13, variableAdd13);
     const relu8 = this.builder_.relu(add18);
     const convTranspose1 = this.builder_.convTranspose2d(relu8, weightConvTranspose1,
-        {strides: [2, 2], outputSizes: [540, 540]});
+        {padding: [0, 1, 0, 1], strides: [2, 2], outputSizes: [540, 540]});
 
     const add19 = this.buildInstanceNormalization_(convTranspose1, variableMul14, variableAdd14);
     const relu9 = this.builder_.relu(add19);

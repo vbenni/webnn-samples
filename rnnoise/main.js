@@ -7,7 +7,8 @@ const batchSize = 1;
 const frames = 100; // Frames is fixed at 100
 const frameSize = 480;
 const gainsSize = 22;
-const weightsUrl = '../test-data/models/rnnoise/weights/';
+const weightsUrl = utils.weightsOrigin() +
+  '/test-data/models/rnnoise/weights/';
 const rnnoise = new RNNoise(weightsUrl, batchSize, frames);
 
 $('#backendBtns .btn').on('change', async () => {
@@ -145,9 +146,9 @@ async function denoise() {
     start = performance.now();
     outputs = await rnnoise.compute(inputs, outputs);
     const executionTime = (performance.now() - start).toFixed(2);
-    inputs.vadGruInitialH = outputs.vadGruYH;
-    inputs.noiseGruInitialH = outputs.noiseGruYH;
-    inputs.denoiseGruInitialH = outputs.denoiseGruYH;
+    inputs.vadGruInitialH = outputs.vadGruYH.slice();
+    inputs.noiseGruInitialH = outputs.noiseGruYH.slice();
+    inputs.denoiseGruInitialH = outputs.denoiseGruYH.slice();
 
     start = performance.now();
     const output = analyser.postProcessing(outputs.denoiseOutput);
@@ -220,7 +221,7 @@ export async function main() {
       `[${batchSize} (batch_size) x 100 (frames) x 42].`, true);
     await log(modelInfo, '- Loading model...');
     const powerPreference = utils.getUrlParams()[1];
-    const contextOptions = {'devicePreference': deviceType};
+    const contextOptions = {deviceType};
     if (powerPreference) {
       contextOptions['powerPreference'] = powerPreference;
     }

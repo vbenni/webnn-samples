@@ -1,16 +1,17 @@
 'use strict';
 
-import {buildConstantByNpy} from '../common/utils.js';
+import {buildConstantByNpy, computePadding2DForAutoPad, weightsOrigin} from '../common/utils.js';
 
 // SSD MobileNet V1 model with 'nhwc' layout, trained on the COCO dataset.
 export class SsdMobilenetV1Nhwc {
   constructor() {
     this.context_ = null;
-    this.devicePreference_ = null;
+    this.deviceType_ = null;
     this.model_ = null;
     this.builder_ = null;
     this.graph_ = null;
-    this.weightsUrl_ = '../test-data/models/ssd_mobilenetv1_nhwc/weights/';
+    this.weightsUrl_ = weightsOrigin() +
+      '/test-data/models/ssd_mobilenetv1_nhwc/weights';
     this.inputOptions = {
       inputLayout: 'nhwc',
       labelUrl: './labels/coco_classes.txt',
@@ -59,23 +60,25 @@ ${nameArray[1]}_BatchNorm_batchnorm`;
     if (options !== undefined) {
       options.inputLayout = 'nhwc';
       options.filterLayout = 'ohwi';
-      options.autoPad = 'same-upper';
     } else {
       options = {
         inputLayout: 'nhwc',
         filterLayout: 'ohwi',
-        autoPad: 'same-upper',
       };
     }
     if (nameArray[0].includes('depthwise')) {
       options.filterLayout = 'ihwo';
     }
     options.bias = bias;
+    options.padding = computePadding2DForAutoPad(
+        /* nhwc */[input.shape()[1], input.shape()[2]],
+        /* ohwi or ihwo */[weights.shape()[1], weights.shape()[2]],
+        options.strides, options.dilations, 'same-upper');
     if (relu6) {
       // TODO: Set clamp activation to options once it's supported in
       // WebNN DML backend.
       // Implement `clip` by `clamp` of  WebNN API
-      if (this.devicePreference_ == 'gpu') {
+      if (this.deviceType_ == 'gpu') {
         return this.builder_.clamp(
             this.builder_.conv2d(input, weights, options),
             {minValue: 0, maxValue: 6});
@@ -88,10 +91,13 @@ ${nameArray[1]}_BatchNorm_batchnorm`;
 
   async load(contextOptions) {
     this.context_ = await navigator.ml.createContext(contextOptions);
-    this.devicePreference_ = contextOptions.devicePreference;
+    this.deviceType_ = contextOptions.deviceType;
     this.builder_ = new MLGraphBuilder(this.context_);
-    const input = this.builder_.input('input',
-        {type: 'float32', dimensions: this.inputOptions.inputDimensions});
+    const input = this.builder_.input('input', {
+      type: 'float32',
+      dataType: 'float32',
+      dimensions: this.inputOptions.inputDimensions,
+    });
     const strides = [2, 2];
     const conv0 = await this.buildConv_(
         input, ['', '0', '', '165__cf__168'], true, {strides});

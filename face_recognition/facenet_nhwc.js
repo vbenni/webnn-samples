@@ -1,6 +1,6 @@
 'use strict';
 
-import {buildConstantByNpy} from '../common/utils.js';
+import {buildConstantByNpy, computePadding2DForAutoPad, weightsOrigin} from '../common/utils.js';
 const strides = [2, 2];
 const autoPad = 'same-upper';
 
@@ -12,7 +12,8 @@ export class FaceNetNhwc {
     this.context_ = null;
     this.builder_ = null;
     this.graph_ = null;
-    this.weightsUrl_ = '../test-data/models/facenet_nhwc/weights';
+    this.weightsUrl_ = weightsOrigin() +
+      '/test-data/models/facenet_nhwc/weights';
     this.inputOptions = {
       mean: [127.5, 127.5, 127.5, 127.5],
       std: [127.5, 127.5, 127.5, 127.5],
@@ -44,6 +45,14 @@ export class FaceNetNhwc {
     }
     if (relu) {
       options.activation = this.builder_.relu();
+    }
+    // WebNN spec drops autoPad support, compute the explicit padding instead.
+    if (options.autoPad == 'same-upper') {
+      options.padding =
+        computePadding2DForAutoPad(
+            /* nwhc */[input.shape()[1], input.shape()[2]],
+            /* ohwi */[weights.shape()[1], weights.shape()[2]],
+            options.strides, options.dilations, options.autoPad);
     }
     return this.builder_.conv2d(input, weights, options);
   }
@@ -109,7 +118,7 @@ export class FaceNetNhwc {
   }
 
   async buildFullyConnected_(input) {
-    input = this.builder_.reshape(input, [1, null]);
+    input = this.builder_.reshape(input, [1, 1792]);
     const weights = await buildConstantByNpy(this.builder_,
         `${this.weightsUrl_}/Bottleneck_kernel_transpose.npy`);
     const bias = await buildConstantByNpy(this.builder_,
@@ -125,8 +134,11 @@ export class FaceNetNhwc {
   async load(contextOptions) {
     this.context_ = await navigator.ml.createContext(contextOptions);
     this.builder_ = new MLGraphBuilder(this.context_);
-    const input = this.builder_.input('input',
-        {type: 'float32', dimensions: this.inputOptions.inputDimensions});
+    const input = this.builder_.input('input', {
+      type: 'float32',
+      dataType: 'float32',
+      dimensions: this.inputOptions.inputDimensions,
+    });
 
     const poolOptions = {windowDimensions: [3, 3], strides, layout: 'nhwc'};
 

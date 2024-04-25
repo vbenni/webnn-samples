@@ -46,21 +46,6 @@
             </div>
           </div>
         </div>
-        <div class="row mb-2 align-items-center">
-          <div class="col-1 col-md-1">
-            <span>Layout</span>
-          </div>
-          <div class="col-md-auto">
-            <div class="btn-group-toggle" data-toggle="buttons" id="layoutBtns">
-              <label class="btn btn-outline-info btn-sm">
-                <input type="radio" name="layout" id="nchw" autocomplete="off">NCHW
-              </label>
-              <label class="btn btn-outline-info btn-sm active">
-                <input type="radio" name="layout" id="nhwc" autocomplete="off" checked>NHWC
-              </label>
-            </div>
-          </div>
-        </div>
         <div class="row align-items-center">
           <div class="col-1 col-md-1">
             <span>Model</span>
@@ -169,7 +154,7 @@
   </div>
   <footer class="text-muted text-center text-small mt-5">
     <div id="badge"></div>
-    <p>&copy;2023 <a href="https://webmachinelearning.github.io/">WebNN API</a></p>
+    <div id="footer"></div>
   </footer>
   <script>
     // This workaround is to fix jquery loading issue in electron.
@@ -188,8 +173,8 @@
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
     integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
     crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0/dist/tf.min.js"
-    integrity="sha256-28ZvjeNGrGNEIj9/2D8YAPE6Vm5JSvvDs+LI4ED31x8="
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.13.0/dist/tf.min.js"
+    integrity="sha256-thVOvsS0U8X0/2twH3+6dCK3ZPTvgWgFSivgfpj5vQQ="
     crossorigin="anonymous"></script>
   <script>
     // To restore module after loading 3rd-party libraries.

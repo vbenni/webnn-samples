@@ -34,9 +34,9 @@
                 <label class="btn btn-outline-info" name="polyfill">
                   <input type="radio" name="backend" id="polyfill_gpu" autocomplete="off">WebGL (GPU)
                 </label>
-                <label class="btn btn-outline-info" name="webnn">
+                <!-- <label class="btn btn-outline-info" name="webnn">
                   <input type="radio" name="backend" id="webnn_cpu" autocomplete="off">WebNN (CPU)
-                </label>
+                </label> -->
                 <label class="btn btn-outline-info" name="webnn">
                   <input type="radio" name="backend" id="webnn_gpu" autocomplete="off">WebNN (GPU)
                 </label>
@@ -100,7 +100,7 @@
     </div>
     <footer class="text-muted text-center text-small mt-5">
       <div id="badge"></div>
-      <p>&copy;2023 <a href="https://webmachinelearning.github.io/">WebNN API</a></p>
+      <div id="footer"></div>
     </footer>
     <script>
       // This workaround is to fix jquery loading issue in electron.

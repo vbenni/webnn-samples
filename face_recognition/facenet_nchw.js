@@ -1,6 +1,6 @@
 'use strict';
 
-import {buildConstantByNpy} from '../common/utils.js';
+import {buildConstantByNpy, computePadding2DForAutoPad, weightsOrigin} from '../common/utils.js';
 const strides = [2, 2];
 const autoPad = 'same-upper';
 
@@ -12,7 +12,8 @@ export class FaceNetNchw {
     this.context_ = null;
     this.builder_ = null;
     this.graph_ = null;
-    this.weightsUrl_ = '../test-data/models/facenet_nchw/weights';
+    this.weightsUrl_ = weightsOrigin() +
+      '/test-data/models/facenet_nchw/weights';
     this.inputOptions = {
       mean: [127.5, 127.5, 127.5, 127.5],
       std: [127.5, 127.5, 127.5, 127.5],
@@ -42,6 +43,14 @@ export class FaceNetNchw {
     }
     if (relu) {
       options.activation = this.builder_.relu();
+    }
+    // WebNN spec drops autoPad support, compute the explicit padding instead.
+    if (options.autoPad == 'same-upper') {
+      options.padding =
+        computePadding2DForAutoPad(
+            /* nchw */[input.shape()[2], input.shape()[3]],
+            /* oihw */[weights.shape()[2], weights.shape()[3]],
+            options.strides, options.dilations, options.autoPad);
     }
     return this.builder_.conv2d(input, weights, options);
   }
@@ -124,8 +133,11 @@ export class FaceNetNchw {
   async load(contextOptions) {
     this.context_ = await navigator.ml.createContext(contextOptions);
     this.builder_ = new MLGraphBuilder(this.context_);
-    const input = this.builder_.input('input',
-        {type: 'float32', dimensions: this.inputOptions.inputDimensions});
+    const input = this.builder_.input('input', {
+      type: 'float32',
+      dataType: 'float32',
+      dimensions: this.inputOptions.inputDimensions,
+    });
 
     const poolOptions = {windowDimensions: [3, 3], strides};
 
@@ -230,7 +242,10 @@ export class FaceNetNchw {
         block8_5, 6, ['977', '1104', '978', '1080', '1086'], false);
 
     const averagePool = this.builder_.averagePool2d(block8_6);
-    const squeeze = this.builder_.squeeze(averagePool, {axes: [2, 3]});
+    // Use reshape to implement squeeze(averagePool, {axes: [2, 3]});
+    const squeezed_shape = averagePool.shape();
+    squeezed_shape.splice(2, 2);
+    const squeeze = this.builder_.reshape(averagePool, squeezed_shape);
     const gemm = await this.buildGemm_(squeeze);
     // L2Normalization will be handled in post-processing
     return gemm;
